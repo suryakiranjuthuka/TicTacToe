@@ -371,14 +371,17 @@ document.addEventListener('DOMContentLoaded', () => {
         cell.classList.add('occupied');
         cell.innerHTML = `
           <svg class="mark-svg mark-x" viewBox="0 0 100 100">
-            <path d="M 20,20 L 80,80" />
-            <path d="M 80,20 L 20,80" />
+            <!-- Hand-drawn Stroke 1 with natural ballpoint pen curve -->
+            <path d="M 18,16 C 36,44 64,68 84,84" />
+            <!-- Hand-drawn Stroke 2 with crossing curve -->
+            <path d="M 82,16 C 62,42 38,68 18,84" />
           </svg>`;
       } else if (val === 'O') {
         cell.classList.add('occupied');
         cell.innerHTML = `
           <svg class="mark-svg mark-o" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="34" />
+            <!-- Hand-drawn loop with realistic pen overlap at top -->
+            <path d="M 52,15 C 26,14 15,35 15,53 C 15,73 28,87 50,87 C 72,87 85,73 85,50 C 85,28 70,14 47,15" />
           </svg>`;
       }
     });
@@ -481,8 +484,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const x2 = cellC.left + cellC.width / 2 - boardRect.left;
     const y2 = cellC.top + cellC.height / 2 - boardRect.top;
 
+    // Slight overshoot past endpoints like a real hand scribble slash
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const sx1 = x1 - dx * 0.12;
+    const sy1 = y1 - dy * 0.12;
+    const sx2 = x2 + dx * 0.12;
+    const sy2 = y2 + dy * 0.12;
+
+    // Midpoint with subtle hand-drawn wobble
+    const mx = (sx1 + sx2) / 2 + (dy === 0 ? 0 : 3);
+    const my = (sy1 + sy2) / 2 + (dx === 0 ? 0 : 3);
+
     strikeSvg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
-    strikeSvg.innerHTML = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="strike-line" />`;
+    strikeSvg.innerHTML = `<path d="M ${sx1} ${sy1} Q ${mx} ${my} ${sx2} ${sy2}" class="strike-line" />`;
   }
 
   function clearStrikeLine() {

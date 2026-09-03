@@ -44,10 +44,58 @@ class SoundEffects {
     return this.muted;
   }
 
+  playPaperScratch(player) {
+    if (!this.ctx) return;
+    try {
+      const sampleRate = this.ctx.sampleRate;
+      const duration = player === 'X' ? 0.13 : 0.17;
+      const bufferSize = Math.floor(sampleRate * duration);
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+
+      // Pink noise paper friction
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        output[i] = (b0 + b1 + b2 + white * 0.25) * 0.22;
+      }
+
+      const whiteNoise = this.ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      // Bandpass filter mimicking pen/pencil graphite friction against paper fiber
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(player === 'X' ? 3200 : 2700, this.ctx.currentTime);
+      filter.Q.setValueAtTime(2.2, this.ctx.currentTime);
+
+      const gain = this.ctx.createGain();
+      const now = this.ctx.currentTime;
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.28, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      whiteNoise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      whiteNoise.start(now);
+      whiteNoise.stop(now + duration);
+    } catch (e) {
+      // Audio graceful fallback
+    }
+  }
+
   playMove(player) {
     if (this.muted) return;
     this.initContext();
     if (!this.ctx) return;
+
+    // Trigger authentic pencil/pen paper scratch sound
+    this.playPaperScratch(player);
 
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
@@ -57,20 +105,20 @@ class SoundEffects {
     gain.connect(this.ctx.destination);
 
     if (player === 'X') {
-      // Crisp, bright sine chirp
+      // Crisp blue ballpoint acoustic tone
       osc.type = 'sine';
       osc.frequency.setValueAtTime(587.33, now); // D5
       osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // A5
-      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.setValueAtTime(0.12, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
       osc.start(now);
       osc.stop(now + 0.12);
     } else {
-      // Warm mellow triangle chirp
+      // Warm red pen acoustic tone
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(440, now); // A4
       osc.frequency.exponentialRampToValueAtTime(330, now + 0.1); // E4
-      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.setValueAtTime(0.14, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
       osc.start(now);
       osc.stop(now + 0.14);
