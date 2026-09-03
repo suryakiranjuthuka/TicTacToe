@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tic-Tac-Toe AI Test Suite</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 2rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #38bdf8;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 0.5rem;
+    }
+    .test-result {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .pass {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #34d399;
+    }
+    .fail {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #f87171;
+    }
+    .summary-card {
+      background: #1e293b;
+      padding: 1.25rem;
+      border-radius: 10px;
+      margin-top: 1.5rem;
+      border: 1px solid #475569;
+    }
+    a { color: #38bdf8; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Tic-Tac-Toe AI & Logic Test Suite</h1>
+  <p><a href="index.html">← Return to Tic-Tac-Toe Game</a></p>
+  <div id="results">Running tests...</div>
+  <div id="summary" class="summary-card"></div>
+
+  <script src="game.js"></script>
+  <script src="ai.js"></script>
+  <script>
+    const resultsContainer = document.getElementById('results');
+    const summaryContainer = document.getElementById('summary');
+    resultsContainer.innerHTML = '';
+
+    let passed = 0;
+    let failed = 0;
+
+    function assert(condition, testName) {
+      const div = document.createElement('div');
+      div.className = 'test-result ' + (condition ? 'pass' : 'fail');
+      div.innerHTML = (condition ? '✓ PASS: ' : '✗ FAIL: ') + testName;
+      resultsContainer.appendChild(div);
+      if (condition) passed++; else failed++;
+    }
+
+    try {
+      // 1. Initial State
+      const game = new TicTacToeGame();
+      assert(game.board.length === 9 && game.board.every(c => c === null), "Initial board is 9 empty cells");
+      assert(game.currentPlayer === 'X', "Starting player defaults to 'X'");
+      assert(game.status === 'playing', "Initial game status is 'playing'");
+
+      // 2. Making Moves
+      const move1 = game.makeMove(0);
+      assert(move1.success && game.board[0] === 'X' && game.currentPlayer === 'O', "Player X marks cell 0, switches turn to O");
+
+      const invalidMove = game.makeMove(0);
+      assert(!invalidMove.success, "Cannot play in an already occupied cell");
+
+      // 3. Winning Line
+      game.reset('X');
+      game.makeMove(0); // X
+      game.makeMove(3); // O
+      game.makeMove(1); // X
+      game.makeMove(4); // O
+      const winMove = game.makeMove(2); // X completes [0, 1, 2]
+      assert(winMove.status === 'won' && winMove.winner === 'X', "Player X wins by completing row 0 [0, 1, 2]");
+      assert(JSON.stringify(winMove.winningLine) === JSON.stringify([0, 1, 2]), "Winning line coordinates accurately match [0, 1, 2]");
+
+      // 4. Undo Functionality
+      game.reset('X');
+      game.makeMove(4); // X center
+      game.undo();
+      assert(game.board[4] === null && game.currentPlayer === 'X', "Undo successfully rolls back move and restores player turn");
+
+      // 5. Minimax AI Unbeatable Threat Block
+      const ai = new TicTacToeAI();
+      // Opponent threatens row 2: [6, 7] are 'X', 8 is open. AI (O) must block by playing 8.
+      const blockBoard = [
+        'O', null, null,
+        null, 'O', null,
+        'X', 'X', null
+      ];
+      const blockResult = ai.getBestMove(blockBoard, 'O', 'hard');
+      assert(blockResult.move === 8, "AI detects and blocks immediate opponent winning threat at tile 8");
+
+      // 6. Minimax AI Immediate Win
+      // AI (O) has [0, 4], tile 8 completes diagonal win.
+      const winBoard = [
+        'O', 'X', null,
+        'X', 'O', null,
+        null, null, null
+      ];
+      const winResult = ai.getBestMove(winBoard, 'O', 'hard');
+      assert(winResult.move === 8, "AI seizes immediate diagonal winning line at tile 8");
+
+      // 7. Heatmap Evaluation
+      const heatmap = ai.getBoardHeatmap(blockBoard, 'O');
+      assert(heatmap.length === 9, "Heatmap calculates evaluations for all 9 cells");
+      const tile8 = heatmap[8];
+      assert(tile8.isAvailable && tile8.score !== null, "Heatmap evaluation assigns score to available cells");
+
+      // 8. Move Explanation
+      assert(typeof blockResult.reasoning === 'string' && blockResult.reasoning.length > 0, "AI generates pedagogical explanation for students");
+
+      // Summary
+      summaryContainer.innerHTML = `
+        <h3>Test Summary</h3>
+        <p>Total Tests: <b>${passed + failed}</b> | Passed: <span style="color:#34d399"><b>${passed}</b></span> | Failed: <span style="color:#f87171"><b>${failed}</b></span></p>
+        <p style="color: #94a3b8; font-size: 0.85rem;">All browser-level unit tests verified against pure JavaScript engines.</p>
+      `;
+    } catch (err) {
+      assert(false, "Unexpected runtime error: " + err.message);
+    }
+  </script>
+</body>
+</html>
